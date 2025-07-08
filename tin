@@ -1,41 +1,80 @@
 #!/usr/bin/env php
 <?php
 
-echo "✨ TinProgrammers MVC Generator ✨\n\n";
+// --- Colors for CLI ---
+$C = [
+  'cyan' => "\033[1;36m",
+  'green' => "\033[1;32m",
+  'red' => "\033[1;31m",
+  'reset' => "\033[0m"
+];
 
+echo "{$C['cyan']}✨ TinProgrammers MVC Generator ✨{$C['reset']}\n\n";
+
+// --- Project name ---
 $projectName = $argv[1] ?? null;
 
 if (!$projectName) {
-  echo "Usage: tin <project-name>\n";
+  echo "{$C['red']}❌ Usage: tin <project-name>{$C['reset']}\n";
   echo "Example: tin myproject\n";
   exit(1);
 }
 
-$targetDir = getcwd() . '/' . $projectName;
-
-if (is_dir($targetDir)) {
-  echo "❌ Directory already exists.\n";
+// --- PHP version check ---
+if (version_compare(PHP_VERSION, '8.0.0', '<')) {
+  echo "{$C['red']}❌ PHP 8.0 or higher required! Current: " . PHP_VERSION . "{$C['reset']}\n";
   exit(1);
 }
 
-// Copy skeleton
+// --- Composer check ---
+if (!shell_exec('composer --version')) {
+  echo "{$C['red']}❌ Composer not found! Install Composer first.{$C['reset']}\n";
+  exit(1);
+}
+
+// --- Prepare directories ---
+$targetDir = getcwd() . '/' . $projectName;
+
+if (is_dir($targetDir)) {
+  echo "{$C['red']}❌ Directory already exists: $projectName{$C['reset']}\n";
+  exit(1);
+}
+
 echo "📁 Creating project structure...\n";
 recurse_copy(__DIR__ . '/skeleton', $targetDir);
 
-echo "✅ Project '$projectName' created!\n";
-
-// Run composer install
 chdir($targetDir);
-echo "📦 Installing dependencies...\n";
+
+// --- .env rename ---
+if (file_exists('.env.example') && !file_exists('.env')) {
+  rename('.env.example', '.env');
+  echo "🔑 .env file created from .env.example\n";
+}
+
+// --- Composer install ---
+echo "📦 Installing dependencies with Composer...\n";
 exec('composer install');
 
-echo "✨ All done! Happy coding! ✨\n";
+// --- Git init ---
+echo "🐙 Initializing Git repository...\n";
+exec('git init');
+exec('git add .');
+exec('git commit -m "Initial commit 🎉"');
 
+// --- Done! ---
+echo "{$C['green']}✅ Project '{$projectName}' created successfully!{$C['reset']}\n";
+echo "👉 Next steps:\n";
+echo "   cd {$projectName}\n";
+echo "   php -S localhost:8000 -t public\n";
+echo "   Happy coding meri dev queen! 🫶✨\n";
+
+// --- Function to copy skeleton ---
 function recurse_copy($src, $dst) {
   $dir = opendir($src);
   @mkdir($dst, 0777, true);
   while (false !== ($file = readdir($dir))) {
     if (($file != '.') && ($file != '..')) {
+      if (in_array($file, ['.git', 'node_modules'])) continue; // skip unwanted
       if (is_dir($src . '/' . $file)) {
         recurse_copy($src . '/' . $file, $dst . '/' . $file);
       } else {
