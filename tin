@@ -1,7 +1,6 @@
 #!/usr/bin/env php
 <?php
 
-// --- Colors for CLI ---
 $C = [
   'cyan' => "\033[1;36m",
   'green' => "\033[1;32m",
@@ -9,72 +8,287 @@ $C = [
   'reset' => "\033[0m"
 ];
 
-echo "{$C['cyan']}✨ TinProgrammers MVC Generator ✨{$C['reset']}\n\n";
+echo "{$C['cyan']}✨ TinProgrammers CLI ✨{$C['reset']}\n\n";
 
-// --- Project name ---
-$projectName = $argv[1] ?? null;
+// --- Arguments ---
+$command = $argv[1] ?? null;
+$param = $argv[2] ?? null;
 
-if (!$projectName) {
-  echo "{$C['red']}❌ Usage: tin <project-name>{$C['reset']}\n";
-  echo "Example: tin myproject\n";
-  exit(1);
+switch ($command) {
+  case 'new':
+    createProject($param);
+    break;
+
+  case 'make:controller':
+    checkIfInProject();
+    makeController($param);
+    break;
+
+  case 'make:model':
+    checkIfInProject();
+    makeModel($param);
+    break;
+
+  case 'make:view':
+    checkIfInProject();
+    makeView($param);
+    break;
+
+  case 'make:mvc':
+    checkIfInProject();
+    makeController($param);
+    makeModel($param);
+    makeView(strtolower($param));
+    echo "{$C['green']}✨ All done: Controller, Model & View created!{$C['reset']}\n";
+    break;
+
+  case 'make:migration':
+    checkIfInProject();
+    makeMigration($param);
+    break;
+
+  case 'migrate':
+    checkIfInProject();
+    runMigrations();
+    break;
+
+  case 'migrate:rollback':
+    checkIfInProject();
+    rollbackMigrations();
+    break;
+
+  default:
+    echo "{$C['red']}❌ Unknown command: $command{$C['reset']}\n";
+    echo "Usage:\n";
+    echo "  tin new myproject\n";
+    echo "  tin make:controller MyController\n";
+    echo "  tin make:model User\n";
+    echo "  tin make:view dashboard\n";
+    echo "  tin make:mvc Blog\n";
+    echo "  tin make:migration create_users_table\n";
+    echo "  tin migrate\n";
+    echo "  tin migrate:rollback\n";
+    break;
 }
 
-// --- PHP version check ---
-if (version_compare(PHP_VERSION, '8.0.0', '<')) {
-  echo "{$C['red']}❌ PHP 8.0 or higher required! Current: " . PHP_VERSION . "{$C['reset']}\n";
-  exit(1);
+exit(0);
+
+// -------------------- Functions --------------------
+
+function checkIfInProject() {
+  if (!file_exists(getcwd() . '/public/index.php') || !is_dir(getcwd() . '/app')) {
+    echo "❌ Not inside a Tin MVC project! Run this inside your project root.\n";
+    exit(1);
+  }
 }
 
-// --- Composer check ---
-if (!shell_exec('composer --version')) {
-  echo "{$C['red']}❌ Composer not found! Install Composer first.{$C['reset']}\n";
-  exit(1);
+function createProject($projectName) {
+  global $C;
+
+  if (!$projectName) {
+    echo "{$C['red']}❌ Usage: tin new <project-name>{$C['reset']}\n";
+    exit(1);
+  }
+
+  if (version_compare(PHP_VERSION, '8.0.0', '<')) {
+    echo "{$C['red']}❌ PHP 8.0+ required! Current: " . PHP_VERSION . "{$C['reset']}\n";
+    exit(1);
+  }
+
+  if (!shell_exec('composer --version')) {
+    echo "{$C['red']}❌ Composer not found!{$C['reset']}\n";
+    exit(1);
+  }
+
+  $targetDir = getcwd() . '/' . $projectName;
+  if (is_dir($targetDir)) {
+    echo "{$C['red']}❌ Directory already exists: $projectName{$C['reset']}\n";
+    exit(1);
+  }
+
+  echo "📁 Creating project structure...\n";
+  recurse_copy(__DIR__ . '/skeleton', $targetDir);
+  chdir($targetDir);
+
+  if (file_exists('.env.example') && !file_exists('.env')) {
+    rename('.env.example', '.env');
+    echo "🔑 .env created\n";
+  }
+
+  echo "📦 Installing Composer deps...\n";
+  exec('composer install');
+
+  echo "🐙 Initializing Git...\n";
+  exec('git init');
+  exec('git add .');
+  exec('git commit -m \"Initial commit 🎉\"');
+
+  echo "{$C['green']}✅ Project '{$projectName}' ready!{$C['reset']}\n";
 }
 
-// --- Prepare directories ---
-$targetDir = getcwd() . '/' . $projectName;
+function makeController($name) {
+  global $C;
 
-if (is_dir($targetDir)) {
-  echo "{$C['red']}❌ Directory already exists: $projectName{$C['reset']}\n";
-  exit(1);
+  if (!$name) {
+    echo "{$C['red']}❌ Usage: tin make:controller <ControllerName>{$C['reset']}\n";
+    return;
+  }
+
+  $dir = getcwd() . "/app/Controllers";
+  if (!is_dir($dir)) mkdir($dir, 0777, true);
+
+  $file = "$dir/{$name}.php";
+  if (file_exists($file)) {
+    echo "{$C['red']}❌ Controller already exists!{$C['reset']}\n";
+    return;
+  }
+
+  $template = "<?php\n\nnamespace App\Controllers;\n\nclass {$name} {\n  public function index() {\n    echo \"Hello from {$name} controller!\";\n  }\n}\n";
+
+  file_put_contents($file, $template);
+  echo "{$C['green']}✅ Controller '{$name}' created!{$C['reset']}\n";
 }
 
-echo "📁 Creating project structure...\n";
-recurse_copy(__DIR__ . '/skeleton', $targetDir);
+function makeModel($name) {
+  global $C;
 
-chdir($targetDir);
+  if (!$name) {
+    echo "{$C['red']}❌ Usage: tin make:model <ModelName>{$C['reset']}\n";
+    return;
+  }
 
-// --- .env rename ---
-if (file_exists('.env.example') && !file_exists('.env')) {
-  rename('.env.example', '.env');
-  echo "🔑 .env file created from .env.example\n";
+  $dir = getcwd() . "/app/Models";
+  if (!is_dir($dir)) mkdir($dir, 0777, true);
+
+  $file = "$dir/{$name}.php";
+  if (file_exists($file)) {
+    echo "{$C['red']}❌ Model already exists!{$C['reset']}\n";
+    return;
+  }
+
+  $template = "<?php\n\nnamespace App\Models;\n\nclass {$name} {\n  // Define your model logic here\n}\n";
+
+  file_put_contents($file, $template);
+  echo "{$C['green']}✅ Model '{$name}' created!{$C['reset']}\n";
 }
 
-// --- Composer install ---
-echo "📦 Installing dependencies with Composer...\n";
-exec('composer install');
+function makeView($name) {
+  global $C;
 
-// --- Git init ---
-echo "🐙 Initializing Git repository...\n";
-exec('git init');
-exec('git add .');
-exec('git commit -m "Initial commit 🎉"');
+  if (!$name) {
+    echo "{$C['red']}❌ Usage: tin make:view <view-name>{$C['reset']}\n";
+    return;
+  }
 
-// --- Done! ---
-echo "{$C['green']}✅ Project '{$projectName}' created successfully!{$C['reset']}\n";
-echo "👉 Next steps:\n";
-echo "   cd {$projectName}\n";
-echo "   php -S localhost:8000 -t public\n";
-echo "   Happy coding meri dev queen! 🫶✨\n";
+  $dir = getcwd() . "/app/Views";
+  if (!is_dir($dir)) mkdir($dir, 0777, true);
 
-// --- Function to copy skeleton ---
+  $file = "$dir/{$name}.php";
+  if (file_exists($file)) {
+    echo "{$C['red']}❌ View already exists!{$C['reset']}\n";
+    return;
+  }
+
+  $template = "<h1>Welcome to {$name} view 👀</h1>";
+
+  file_put_contents($file, $template);
+  echo "{$C['green']}✅ View '{$name}' created!{$C['reset']}\n";
+}
+
+function makeMigration($name) {
+  global $C;
+
+  if (!$name) {
+    echo "{$C['red']}❌ Usage: tin make:migration <name>{$C['reset']}\n";
+    return;
+  }
+
+  $dir = getcwd() . "/database/migrations";
+  if (!is_dir($dir)) mkdir($dir, 0777, true);
+
+  $timestamp = date('Y_m_d_His');
+  $file = "{$dir}/{$timestamp}_{$name}.php";
+
+  $template = "<?php\n\nreturn [\n  'up' => function(\$db) {\n    // Add your table creation SQL here\n  },\n\n  'down' => function(\$db) {\n    // Add your table DROP SQL here\n  }\n];\n";
+
+  file_put_contents($file, $template);
+  echo "{$C['green']}✅ Migration '{$name}' created!{$C['reset']}\n";
+}
+
+function runMigrations() {
+  global $C;
+
+  $dir = getcwd() . "/database/migrations";
+  if (!is_dir($dir)) {
+    echo "{$C['red']}❌ No migrations directory found!{$C['reset']}\n";
+    return;
+  }
+
+  $db = getDbConnection();
+  if (!$db) return;
+
+  echo "🔗 DB Connected! Running migrations...\n";
+  foreach (glob($dir . '/*.php') as $file) {
+    $migration = include $file;
+    $migration['up']($db);
+  }
+  $db->close();
+  echo "{$C['green']}✅ All migrations executed!{$C['reset']}\n";
+}
+
+function rollbackMigrations() {
+  global $C;
+
+  $dir = getcwd() . "/database/migrations";
+  if (!is_dir($dir)) {
+    echo "{$C['red']}❌ No migrations directory found!{$C['reset']}\n";
+    return;
+  }
+
+  $db = getDbConnection();
+  if (!$db) return;
+
+  echo "🔗 DB Connected! Rolling back migrations...\n";
+  $files = glob($dir . '/*.php');
+  rsort($files);
+  foreach ($files as $file) {
+    $migration = include $file;
+    $migration['down']($db);
+  }
+  $db->close();
+  echo "{$C['green']}✅ Rollback complete!{$C['reset']}\n";
+}
+
+function getDbConnection() {
+  global $C;
+
+  if (!file_exists('.env')) {
+    echo "{$C['red']}❌ .env file not found!{$C['reset']}\n";
+    return null;
+  }
+
+  $env = parse_ini_file('.env');
+
+  $db = new mysqli(
+    $env['DB_HOST'] ?? 'localhost',
+    $env['DB_USER'] ?? 'root',
+    $env['DB_PASS'] ?? '',
+    $env['DB_NAME'] ?? ''
+  );
+
+  if ($db->connect_error) {
+    echo "{$C['red']}❌ DB Connection failed: {$db->connect_error}{$C['reset']}\n";
+    return null;
+  }
+
+  return $db;
+}
+
 function recurse_copy($src, $dst) {
   $dir = opendir($src);
   @mkdir($dst, 0777, true);
   while (false !== ($file = readdir($dir))) {
     if (($file != '.') && ($file != '..')) {
-      if (in_array($file, ['.git', 'node_modules'])) continue; // skip unwanted
       if (is_dir($src . '/' . $file)) {
         recurse_copy($src . '/' . $file, $dst . '/' . $file);
       } else {
