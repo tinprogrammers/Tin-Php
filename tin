@@ -1,0 +1,47 @@
+#!/usr/bin/env php
+<?php
+
+echo "✨ TinProgrammers MVC Generator ✨\n\n";
+
+$projectName = $argv[1] ?? null;
+
+if (!$projectName) {
+  echo "Usage: tin <project-name>\n";
+  echo "Example: tin myproject\n";
+  exit(1);
+}
+
+$targetDir = getcwd() . '/' . $projectName;
+
+if (is_dir($targetDir)) {
+  echo "❌ Directory already exists.\n";
+  exit(1);
+}
+
+// Copy skeleton
+echo "📁 Creating project structure...\n";
+recurse_copy(__DIR__ . '/skeleton', $targetDir);
+
+echo "✅ Project '$projectName' created!\n";
+
+// Run composer install
+chdir($targetDir);
+echo "📦 Installing dependencies...\n";
+exec('composer install');
+
+echo "✨ All done! Happy coding! ✨\n";
+
+function recurse_copy($src, $dst) {
+  $dir = opendir($src);
+  @mkdir($dst, 0777, true);
+  while (false !== ($file = readdir($dir))) {
+    if (($file != '.') && ($file != '..')) {
+      if (is_dir($src . '/' . $file)) {
+        recurse_copy($src . '/' . $file, $dst . '/' . $file);
+      } else {
+        copy($src . '/' . $file, $dst . '/' . $file);
+      }
+    }
+  }
+  closedir($dir);
+}

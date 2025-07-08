@@ -1,0 +1,16 @@
+{
+    "name": "azeem/myframework",
+    "description": "My custom MVC framework",
+    "authors": [
+        {
+            "name": "tinprogrammers",
+            "email": "tinprogrammers@gmail.com"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    }
+}
