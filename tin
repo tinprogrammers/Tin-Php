@@ -143,11 +143,93 @@ function makeController($name) {
     return;
   }
 
-  $template = "<?php\n\nnamespace App\Controllers;\n\nclass {$name} {\n  public function index() {\n    echo \"Hello from {$name} controller!\";\n  }\n}\n";
+  // Auto detect related Model
+  $modelName = str_replace("Controller", "", $name);
+  $modelVar = strtolower($modelName) . "s";
+
+  $template = <<<EOD
+<?php
+namespace App\Controllers;
+
+use App\Models\\{$modelName};
+
+class {$name} {
+
+  /**
+   * GET /{$modelVar}
+   * Sab records ko DB se get karta hai aur view load karta hai.
+   */
+  public function index() {
+    \${$modelVar} = {$modelName}::all();
+    include __DIR__ . '/../../Views/{$modelVar}/index.php';
+  }
+
+  /**
+   * GET /{$modelVar}/show?id=1
+   * Ek single record get karta hai aur view load karta hai.
+   */
+  public function show(\$id) {
+    \$record = {$modelName}::find(\$id);
+    include __DIR__ . '/../../Views/{$modelVar}/show.php';
+  }
+
+  /**
+   * POST /{$modelVar}/store
+   * Naya record create karta hai aur redirect karta hai.
+   */
+  public function store() {
+    // Request data
+    \$data = [
+      'column1' => \$_POST['column1'],
+      'column2' => \$_POST['column2']
+    ];
+
+    {$modelName}::create(\$data);
+
+    header("Location: /{$modelVar}");
+    exit;
+  }
+
+  /**
+   * POST /{$modelVar}/update?id=1
+   * Existing record ko update karta hai aur redirect karta hai.
+   */
+  public function update(\$id) {
+    \$data = [
+      'column1' => \$_POST['column1'],
+      'column2' => \$_POST['column2']
+    ];
+
+    {$modelName}::update(\$id, \$data);
+
+    header("Location: /{$modelVar}/show?id=\$id");
+    exit;
+  }
+
+  /**
+   * POST /{$modelVar}/delete?id=1
+   * Record ko DB se delete karta hai aur redirect karta hai.
+   */
+  public function destroy(\$id) {
+    \$record = {$modelName}::find(\$id);
+
+    if (\$record) {
+      {$modelName}::delete(\$id);
+      include __DIR__ . '/../../Views/{$modelVar}/delete.php';
+      exit;
+    } else {
+      echo "❌ Record not found.";
+      exit;
+    }
+  }
+
+}
+EOD;
 
   file_put_contents($file, $template);
-  echo "{$C['green']}✅ Controller '{$name}' created!{$C['reset']}\n";
+  echo "{$C['green']}✅ Controller '{$name}' created with CRUD template!{$C['reset']}\n";
 }
+
 
 function makeModel($name) {
   global $C;
