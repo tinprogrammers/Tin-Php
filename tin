@@ -166,10 +166,69 @@ function makeModel($name) {
     return;
   }
 
-  $template = "<?php\n\nnamespace App\Models;\n\nclass {$name} {\n  // Define your model logic here\n}\n";
+  $tableName = strtolower($name) . "s";
+
+  $template = <<<EOD
+<?php
+namespace App\Models;
+
+require_once __DIR__ . '/../Helpers/db.php';
+
+class {$name} {
+
+  /**
+   * Sab records ko DB se laata hai.
+   */
+  public static function all() {
+    \$result = db()->query("SELECT * FROM {$tableName}");
+    return \$result->fetch_all(MYSQLI_ASSOC);
+  }
+
+  /**
+   * Ek specific record ko ID se find karta hai.
+   */
+  public static function find(\$id) {
+    \$stmt = db()->prepare("SELECT * FROM {$tableName} WHERE id = ?");
+    \$stmt->bind_param("i", \$id);
+    \$stmt->execute();
+    return \$stmt->get_result()->fetch_assoc();
+  }
+
+  /**
+   * Naya record create karta hai.
+   * Customize this according to your table columns.
+   */
+  public static function create(\$data) {
+    // Example query - change columns as needed
+    \$stmt = db()->prepare("INSERT INTO {$tableName} (column1, column2) VALUES (?, ?)");
+    \$stmt->bind_param("ss", \$data['column1'], \$data['column2']);
+    return \$stmt->execute();
+  }
+
+  /**
+   * Ek record ko ID se update karta hai.
+   */
+  public static function update(\$id, \$data) {
+    // Example query - change columns as needed
+    \$stmt = db()->prepare("UPDATE {$tableName} SET column1 = ?, column2 = ? WHERE id = ?");
+    \$stmt->bind_param("ssi", \$data['column1'], \$data['column2'], \$id);
+    return \$stmt->execute();
+  }
+
+  /**
+   * Ek record ko ID se delete karta hai.
+   */
+  public static function delete(\$id) {
+    \$stmt = db()->prepare("DELETE FROM {$tableName} WHERE id = ?");
+    \$stmt->bind_param("i", \$id);
+    return \$stmt->execute();
+  }
+
+}
+EOD;
 
   file_put_contents($file, $template);
-  echo "{$C['green']}✅ Model '{$name}' created!{$C['reset']}\n";
+  echo "{$C['green']}✅ Model '{$name}' created with CRUD template!{$C['reset']}\n";
 }
 
 function makeView($name) {
