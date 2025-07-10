@@ -13,12 +13,12 @@ use App\Core\Router;
 $router = new Router();
 
 // ✅ Define your routes — bas action aur controller ka naam!
-$router->get('/', 'DashboardController@index');
-$router->get('/login', 'AuthController@login');
-$router->post('/login', 'AuthController@loginPost');
-$router->get('/profile', 'ProfileController@show');
-$router->post('/profile/update', 'ProfileController@update');
-$router->post('/profile/delete', 'ProfileController@delete');
+$router->get('/', 'UserController@index');
+$router->get('/users/show/{id}', 'UserController@show');
+$router->post('/users/store', 'UserController@store');
+$router->post('/users/update', 'UserController@update');
+$router->get('/users/delete/{id}', 'UserController@destroy');
+
 
 // ✅ Dispatch kar do!
 $router->dispatch();

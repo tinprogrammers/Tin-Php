@@ -178,9 +178,11 @@ function makeView($name) {
   if (!$name) {
     echo "{$C['red']}❌ Usage: tin make:view <view-name>{$C['reset']}\n";
     return;
+
+
   }
 
-  $dir = getcwd() . "/app/Views";
+  $dir = getcwd() . "Views";
   if (!is_dir($dir)) mkdir($dir, 0777, true);
 
   $file = "$dir/{$name}.php";

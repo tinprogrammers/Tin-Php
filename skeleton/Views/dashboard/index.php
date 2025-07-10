@@ -6,7 +6,7 @@
   <ul class="space-y-2">
     <?php foreach ($users as $user): ?>
       <li class="p-4 bg-white rounded shadow">
-        <?php echo htmlspecialchars($user['username']); ?>
+        <?php echo htmlspecialchars($user['name']); ?>
       </li>
     <?php endforeach; ?>
   </ul>
